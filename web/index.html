@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%236366f1'/%3E%3Cstop offset='100%25' stop-color='%237c3aed'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Ctext x='50%25' y='53%25' dominant-baseline='middle' text-anchor='middle' font-family='Georgia,serif' font-weight='bold' font-size='38' fill='white'%3E%CE%A3%3C/text%3E%3C/svg%3E"
+    />
+    <title>LaTeX Studio — Éditeur d'équations moderne (Go)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/app.css" />
+    <script>
+      window.MathJax = {
+        tex: {
+          packages: { "[+]": ["physics", "color", "bbox", "cancel", "mhchem"] },
+          inlineMath: [
+            ["$", "$"],
+            ["\\(", "\\)"],
+          ],
+          displayMath: [
+            ["$$", "$$"],
+            ["\\[", "\\]"],
+          ],
+        },
+        svg: {
+          fontCache: "none",
+        },
+        startup: {
+          typeset: false,
+        },
+      };
+    </script>
+    <script
+      id="MathJax-script"
+      async
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg-full.js"
+    ></script>
+  </head>
+  <body>
+    <div id="app-shell" class="app-shell">
+      <!-- Header -->
+      <header class="app-header no-print">
+        <div class="brand">
+          <div class="brand-logo" aria-hidden="true">Σ</div>
+          <div class="brand-text">
+            <h1>LaTeX Studio</h1>
+            <span class="badge-engine">Go + MathJax 3</span>
+          </div>
+        </div>
+
+        <nav class="header-tools" aria-label="Outils principaux">
+          <button type="button" id="btn-open-matrix" class="btn-ghost" title="Constructeur visuel de matrices et systèmes">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+            <span class="hide-sm">Matrices</span>
+          </button>
+
+          <button type="button" id="btn-open-templates" class="btn-ghost" title="Modèles et exemples d'équations">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            <span class="hide-sm">Exemples</span>
+          </button>
+
+          <button type="button" id="btn-open-saved" class="btn-ghost" title="Équations enregistrées">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+            <span class="hide-sm">Enregistrés</span>
+            <span id="saved-count-badge" class="count-badge hidden">0</span>
+          </button>
+        </nav>
+
+        <div class="header-actions">
+          <button type="button" id="btn-toggle-layout" class="btn-icon hide-md" title="Basculer vue côte à côte / empilée" aria-label="Basculer la disposition">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 3v18"/></svg>
+          </button>
+
+          <button type="button" id="btn-share" class="btn-ghost" title="Générer et copier un lien de partage">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.59 13.51 6.83 3.98M15.41 6.51l-6.82 3.98"/></svg>
+            <span class="hide-md">Partager</span>
+          </button>
+
+          <button type="button" id="btn-open-help" class="btn-icon" title="Aide, raccourcis clavier et astuces LaTeX" aria-label="Aide et raccourcis">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </button>
+
+          <button type="button" id="btn-theme" class="btn-icon" title="Basculer thème clair / sombre" aria-label="Basculer le thème">
+            <svg id="icon-moon" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+            <svg id="icon-sun" class="icon hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          </button>
+
+          <div class="dropdown-wrap" id="header-export-wrap">
+            <button type="button" id="btn-header-export" class="btn-primary">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>Exporter</span>
+              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div id="header-export-menu" class="dropdown-menu hidden">
+              <button type="button" data-action="copy-png" class="dropdown-item">
+                <span>Copier l'image PNG</span>
+                <small>Ctrl+Shift+C</small>
+              </button>
+              <button type="button" data-action="copy-svg" class="dropdown-item">
+                <span>Copier le code SVG</span>
+                <small>Vectoriel prêt à coller</small>
+              </button>
+              <button type="button" data-action="export-png" class="dropdown-item">
+                <span>Télécharger PNG (HD)</span>
+                <small>Haute résolution</small>
+              </button>
+              <button type="button" data-action="export-svg" class="dropdown-item">
+                <span>Télécharger SVG</span>
+                <small>Vectoriel infini</small>
+              </button>
+              <button type="button" data-action="export-tex" class="dropdown-item">
+                <span>Télécharger .tex</span>
+                <small>Source LaTeX</small>
+              </button>
+              <div class="dropdown-sep"></div>
+              <button type="button" data-action="export-pdf" class="dropdown-item">
+                <span>Imprimer / PDF</span>
+                <small>Sans compte</small>
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Collapsible Symbol Ribbon -->
+      <section class="symbol-ribbon no-print" aria-label="Palette de symboles LaTeX">
+        <div class="ribbon-top">
+          <div id="symbol-tabs" class="symbol-tabs" role="tablist" aria-label="Catégories de symboles"></div>
+
+          <div class="ribbon-search-group">
+            <div class="search-input-wrap">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              <input
+                type="text"
+                id="symbol-search"
+                name="symbol-search"
+                placeholder="Chercher un symbole… (Ctrl+K)"
+                aria-label="Rechercher un symbole LaTeX"
+              />
+              <button type="button" id="btn-clear-search" class="search-clear hidden" aria-label="Effacer la recherche">×</button>
+            </div>
+            <button type="button" id="btn-collapse-ribbon" class="btn-icon" title="Réduire / Afficher la palette" aria-label="Réduire ou afficher la palette">
+              <svg id="icon-ribbon-chev" class="icon ribbon-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m18 15-6-6-6 6"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div id="ribbon-body" class="ribbon-body">
+          <div id="recent-symbols-bar" class="recent-bar hidden">
+            <span class="recent-label">Récents</span>
+            <div id="recent-symbols-list" class="recent-list"></div>
+          </div>
+          <div id="symbol-grid" class="symbol-grid"></div>
+          <div class="ribbon-inspector">
+            <span id="inspector-text">Survolez un bouton pour voir sa commande LaTeX · Sélectionnez du texte avant de cliquer pour l'envelopper</span>
+            <span id="symbol-count" class="inspector-count"></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Main Split Workspace -->
+      <main id="workspace-main" class="workspace-main no-print">
+        <!-- Left Pane: Code Editor -->
+        <section class="pane" aria-label="Éditeur de code LaTeX">
+          <div class="pane-toolbar">
+            <div class="toolbar-group">
+              <span class="pane-title">Code LaTeX</span>
+              <button type="button" id="btn-undo" class="btn-icon-sm" title="Annuler (Ctrl+Z)" aria-label="Annuler" disabled>
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+              </button>
+              <button type="button" id="btn-redo" class="btn-icon-sm" title="Rétablir (Ctrl+Y)" aria-label="Rétablir" disabled>
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg>
+              </button>
+              <span class="toolbar-sep"></span>
+              <button type="button" id="btn-one-line" class="btn-chip" title="Supprimer les sauts de ligne">Une ligne</button>
+              <button type="button" id="btn-display-lines" class="btn-chip active" title="Activer le mode multi-lignes automatique avec \\">Multi-lignes (\\)</button>
+            </div>
+
+            <div class="toolbar-group">
+              <div class="dropdown-wrap" id="copy-latex-wrap">
+                <div class="split-btn">
+                  <button type="button" id="btn-copy-latex" class="split-btn-main" title="Copier le code LaTeX brut">Copier</button>
+                  <button type="button" id="btn-copy-latex-menu" class="split-btn-arrow" aria-label="Formats de copie LaTeX">▾</button>
+                </div>
+                <div id="copy-latex-menu" class="dropdown-menu hidden">
+                  <button type="button" data-copy="raw" class="dropdown-item"><span>Code brut</span><small>\frac...</small></button>
+                  <button type="button" data-copy="inline" class="dropdown-item"><span>Inline Markdown</span><small>$...$</small></button>
+                  <button type="button" data-copy="block" class="dropdown-item"><span>Bloc Markdown</span><small>$$...$$</small></button>
+                </div>
+              </div>
+
+              <button type="button" id="btn-save-snippet" class="btn-amber" title="Sauvegarder cette équation (Ctrl+S)">Sauvegarder</button>
+              <button type="button" id="btn-clear-editor" class="btn-icon-sm danger" title="Effacer l'éditeur" aria-label="Effacer l'éditeur">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="editor-container">
+            <div id="editor-gutter" class="editor-gutter editor-metrics" aria-hidden="true"></div>
+            <div class="editor-stage">
+              <pre id="editor-highlight" class="editor-highlight editor-metrics" aria-hidden="true"></pre>
+              <textarea
+                id="latex-editor-textarea"
+                name="latex-code"
+                class="editor-textarea editor-metrics"
+                spellcheck="false"
+                autocapitalize="off"
+                autocomplete="off"
+                autocorrect="off"
+                aria-label="Éditeur de code LaTeX"
+                placeholder="Saisissez votre code LaTeX ici… (ex: \int_0^1 x^2\,dx = \frac{1}{3})"
+              ></textarea>
+              <div id="autocomplete-popup" class="autocomplete-popup hidden" role="listbox" aria-label="Suggestions LaTeX"></div>
+            </div>
+          </div>
+
+          <div class="editor-footer">
+            <div class="footer-left">
+              <span id="editor-stats">1 ligne · 0 caractère</span>
+              <span class="hide-sm muted">· Fermeture auto {}, [], () · Tapez <code>\</code> pour autocompléter</span>
+            </div>
+            <div class="footer-status">
+              <span id="mathjax-dot" class="status-dot loading"></span>
+              <span id="mathjax-status">Chargement MathJax…</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Draggable Resizer -->
+        <div
+          id="split-resizer"
+          class="split-resizer"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Redimensionner les panneaux"
+          title="Glisser pour redimensionner (double-clic pour réinitialiser)"
+          tabindex="0"
+        ></div>
+
+        <!-- Right Pane: Live Preview -->
+        <section class="pane" aria-label="Aperçu temps réel">
+          <div class="pane-toolbar">
+            <div class="toolbar-group">
+              <span class="pane-title">Aperçu</span>
+              <div class="slider-chip zoom-control">
+                <button type="button" id="btn-zoom-out" class="zoom-btn" title="Réduire la taille" aria-label="Réduire la taille">−</button>
+                <input type="range" id="preview-font-size" name="preview-font-size" min="14" max="64" value="28" aria-label="Taille de police de l'aperçu" />
+                <button type="button" id="btn-zoom-in" class="zoom-btn" title="Agrandir la taille" aria-label="Agrandir la taille">+</button>
+                <span id="preview-font-size-val" class="mono-val">28px</span>
+              </div>
+
+              <div class="segmented" role="group" aria-label="Arrière-plan de l'aperçu">
+                <button type="button" data-bg="auto" class="seg-btn active">Auto</button>
+                <button type="button" data-bg="light" class="seg-btn">Clair</button>
+                <button type="button" data-bg="dark" class="seg-btn">Sombre</button>
+                <button type="button" data-bg="dots" class="seg-btn">Grille</button>
+                <button type="button" data-bg="transparent" class="seg-btn">Damier</button>
+              </div>
+
+              <button type="button" id="btn-display-mode" class="btn-chip" title="Basculer entre mode Bloc ($$) et Inline ($)">Bloc ($$)</button>
+            </div>
+
+            <div class="toolbar-group">
+              <button type="button" id="btn-preview-copy-png" class="btn-chip" title="Copier l'image PNG">Copier PNG</button>
+              <button type="button" id="btn-preview-png" class="btn-chip" title="Télécharger PNG">PNG</button>
+              <button type="button" id="btn-preview-svg" class="btn-chip" title="Télécharger SVG">SVG</button>
+              <button type="button" id="btn-preview-pdf" class="btn-chip hide-sm" title="Imprimer / PDF">PDF</button>
+
+              <div class="dropdown-wrap" id="export-settings-wrap">
+                <button type="button" id="btn-export-settings" class="btn-icon-sm" title="Paramètres d'export PNG/SVG" aria-label="Paramètres d'export">
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+                </button>
+                <div id="export-settings-popover" class="popover hidden">
+                  <div class="popover-title">Options d'exportation</div>
+                  <div class="popover-field">
+                    <span>Résolution PNG (DPI)</span>
+                    <div class="grid-4" id="export-scale-btns">
+                      <button type="button" data-scale="1">1×</button>
+                      <button type="button" data-scale="2">2×</button>
+                      <button type="button" data-scale="3" class="active">3×</button>
+                      <button type="button" data-scale="4">4×</button>
+                    </div>
+                  </div>
+                  <div class="popover-field">
+                    <div class="row-between">
+                      <label for="export-padding">Marge (padding)</label>
+                      <span id="export-padding-val" class="mono-val">20px</span>
+                    </div>
+                    <input type="range" id="export-padding" name="export-padding" min="0" max="64" step="4" value="20" />
+                  </div>
+                  <div class="popover-field">
+                    <span>Fond de l'image</span>
+                    <div class="grid-2" id="export-bg-btns">
+                      <button type="button" data-ebg="transparent" class="active">Transparent</button>
+                      <button type="button" data-ebg="white">Blanc</button>
+                      <button type="button" data-ebg="dark">Sombre</button>
+                      <button type="button" data-ebg="custom">Personnalisé</button>
+                    </div>
+                    <div id="export-custom-bg-row" class="custom-color-row hidden">
+                      <input type="color" id="export-custom-color" name="export-custom-color" value="#ffffff" aria-label="Couleur de fond personnalisée" />
+                      <span id="export-custom-color-val" class="mono-val">#ffffff</span>
+                    </div>
+                  </div>
+                  <div class="popover-field">
+                    <span>Couleur du texte</span>
+                    <div class="grid-3" id="export-ink-btns">
+                      <button type="button" data-ink="auto" class="active">Auto</button>
+                      <button type="button" data-ink="black">Noir</button>
+                      <button type="button" data-ink="white">Blanc</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="preview-canvas" class="preview-canvas bg-auto">
+            <div id="preview-empty" class="preview-empty hidden">
+              <div class="empty-icon">✦</div>
+              <h2>Votre aperçu apparaîtra ici en temps réel</h2>
+              <p>Saisissez du LaTeX à gauche, explorez la palette ou démarrez avec un exemple :</p>
+              <div class="starter-chips">
+                <button type="button" data-starter="\int_{-\infty}^{+\infty} e^{-x^2}\,dx = \sqrt{\pi}">Intégrale de Gauss</button>
+                <button type="button" data-starter="\sum_{n=1}^{\infty} \frac{1}{n^2} = \frac{\pi^2}{6}">Série de Bâle</button>
+                <button type="button" data-starter="\ce{2 H2 + O2 -> 2 H2O}">Chimie (mhchem)</button>
+              </div>
+            </div>
+            <div id="preview-output" class="mathjax-output"></div>
+            <div id="preview-error" class="preview-error hidden" role="alert"></div>
+          </div>
+        </section>
+      </main>
+
+      <!-- Print-only Canvas for PDF Export -->
+      <div id="print-only-canvas" class="print-only-canvas hidden"></div>
+    </div>
+
+    <!-- Matrix Builder Modal -->
+    <div id="matrix-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-label="Constructeur de matrices">
+      <div class="modal-card modal-md">
+        <div class="modal-header">
+          <div>
+            <h2>Constructeur de matrices & systèmes</h2>
+            <p>Choisissez le style, les dimensions et éditez directement les cellules</p>
+          </div>
+          <button type="button" class="btn-icon" data-close-modal="matrix-modal" aria-label="Fermer">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="field-label">Type de délimiteur / environnement</div>
+          <div id="matrix-types" class="matrix-types"></div>
+
+          <div class="matrix-controls">
+            <div class="steppers">
+              <div class="stepper">
+                <span>Lignes</span>
+                <div class="stepper-box">
+                  <button type="button" id="mat-row-dec" aria-label="Moins de lignes">−</button>
+                  <span id="mat-row-val">3</span>
+                  <button type="button" id="mat-row-inc" aria-label="Plus de lignes">+</button>
+                </div>
+              </div>
+              <div class="stepper" id="mat-col-stepper">
+                <span>Colonnes</span>
+                <div class="stepper-box">
+                  <button type="button" id="mat-col-dec" aria-label="Moins de colonnes">−</button>
+                  <span id="mat-col-val">3</span>
+                  <button type="button" id="mat-col-inc" aria-label="Plus de colonnes">+</button>
+                </div>
+              </div>
+            </div>
+            <div class="toolbar-group">
+              <button type="button" id="mat-fill-identity" class="btn-chip">Identité</button>
+              <button type="button" id="mat-clear" class="btn-chip">Vider</button>
+            </div>
+          </div>
+
+          <div class="matrix-grid-wrap">
+            <div id="matrix-grid" class="matrix-grid"></div>
+          </div>
+
+          <div class="matrix-preview-box">
+            <div id="matrix-preview" class="mathjax-output"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-ghost" data-close-modal="matrix-modal">Annuler</button>
+          <button type="button" id="mat-insert-btn" class="btn-primary">Insérer dans l'éditeur</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Templates Modal -->
+    <div id="templates-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-label="Modèles et exemples LaTeX">
+      <div class="modal-card modal-lg">
+        <div class="modal-header">
+          <div>
+            <h2>Modèles & Exemples d'équations</h2>
+            <p>Cliquez sur un modèle pour le charger instantanément dans l'éditeur</p>
+          </div>
+          <button type="button" class="btn-icon" data-close-modal="templates-modal" aria-label="Fermer">×</button>
+        </div>
+        <div id="template-categories" class="modal-tabs"></div>
+        <div id="templates-grid" class="templates-grid"></div>
+      </div>
+    </div>
+
+    <!-- Saved Equations Drawer -->
+    <div id="saved-drawer-backdrop" class="drawer-backdrop hidden" role="dialog" aria-modal="true" aria-label="Équations enregistrées">
+      <aside class="drawer-panel">
+        <div class="modal-header">
+          <h2 id="saved-drawer-title">Équations enregistrées (0)</h2>
+          <button type="button" class="btn-icon" data-close-modal="saved-drawer-backdrop" aria-label="Fermer le panneau">×</button>
+        </div>
+        <div class="drawer-subbar">
+          <div class="search-input-wrap full">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input type="text" id="saved-search" name="saved-search" placeholder="Filtrer par titre ou code LaTeX…" aria-label="Filtrer les équations enregistrées" />
+          </div>
+          <div class="drawer-meta">
+            <span>Stockage serveur Go + local</span>
+            <div class="toolbar-group">
+              <button type="button" id="btn-export-json" class="link-btn">Exporter JSON</button>
+              <label class="link-btn" for="import-json-input">
+                Importer
+                <input type="file" id="import-json-input" name="import-json" accept="application/json" class="hidden" />
+              </label>
+            </div>
+          </div>
+        </div>
+        <div id="saved-list" class="saved-list"></div>
+      </aside>
+    </div>
+
+    <!-- Help & Shortcuts Modal -->
+    <div id="help-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-label="Aide et raccourcis clavier">
+      <div class="modal-card modal-md">
+        <div class="modal-header">
+          <div>
+            <h2>Aide, raccourcis & astuces LaTeX</h2>
+            <p>Productivité studio et insertions rapides en un clic</p>
+          </div>
+          <button type="button" class="btn-icon" data-close-modal="help-modal" aria-label="Fermer">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="help-grid">
+            <div class="help-card">
+              <h3>Raccourcis clavier</h3>
+              <div class="shortcut-row"><span>Rechercher un symbole</span><kbd class="kbd-badge">Ctrl + K</kbd></div>
+              <div class="shortcut-row"><span>Sauvegarder l'équation</span><kbd class="kbd-badge">Ctrl + S</kbd></div>
+              <div class="shortcut-row"><span>Copier l'image PNG</span><kbd class="kbd-badge">Ctrl + Shift + C</kbd></div>
+              <div class="shortcut-row"><span>Sauter au prochain <code>{}</code></span><kbd class="kbd-badge">Tab</kbd></div>
+              <div class="shortcut-row"><span>Autocompléter une commande</span><kbd class="kbd-badge">\ + Tab</kbd></div>
+              <div class="shortcut-row"><span>Zoom aperçu</span><kbd class="kbd-badge">Ctrl + Molette</kbd></div>
+              <div class="shortcut-row"><span>Annuler / Rétablir</span><kbd class="kbd-badge">Ctrl + Z / Y</kbd></div>
+            </div>
+
+            <div class="help-card">
+              <h3>Astuces d'édition</h3>
+              <ul class="help-tips">
+                <li>Sélectionnez du texte puis cliquez sur <code>a/b</code>, <code>√x</code> ou une couleur pour l'envelopper automatiquement.</li>
+                <li>Les accolades <code>{}</code>, crochets <code>[]</code>, parenthèses <code>()</code> et <code>$$</code> se ferment automatiquement.</li>
+                <li>Tapez <code>\\</code> pour passer à la ligne suivante lorsque <strong>Multi-lignes (\\)</strong> est actif.</li>
+                <li>Glissez le séparateur central pour ajuster la largeur de l'éditeur (double-clic pour réinitialiser).</li>
+              </ul>
+            </div>
+          </div>
+
+          <div>
+            <div class="field-label" style="margin-bottom:8px">Insertions rapides (environnements, chimie, physique)</div>
+            <div class="quick-chips">
+              <button type="button" class="btn-chip" data-quick-latex="\begin{aligned} a &= b \\ &= c \end{aligned}">aligned</button>
+              <button type="button" class="btn-chip" data-quick-latex="\begin{cases} x & \text{si } x \ge 0 \\ -x & \text{sinon} \end{cases}">cases</button>
+              <button type="button" class="btn-chip" data-quick-latex="\Bigg( \frac{a}{b} \Bigg)">\Bigg( … \Bigg)</button>
+              <button type="button" class="btn-chip" data-quick-latex="\ce{2 H2 + O2 -> 2 H2O}">\ce{…} Chimie</button>
+              <button type="button" class="btn-chip" data-quick-latex="\pu{9.81 m/s^2}">\pu{…} Unités</button>
+              <button type="button" class="btn-chip" data-quick-latex="\pdv[2]{f}{x}">\pdv[2]{f}{x}</button>
+              <button type="button" class="btn-chip" data-quick-latex="\bra{\phi}\hat{A}\ket{\psi}">Dirac ⟨φ|Â|ψ⟩</button>
+              <button type="button" class="btn-chip" data-quick-latex="\bbox[#fef08a, 4px]{}">Surligné \bbox</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toasts -->
+    <div id="toast-container" class="toast-container no-print"></div>
+
+    <script type="module" src="/static/app.js"></script>
+  </body>
+</html>
