@@ -584,6 +584,7 @@ button {
 @media (min-width: 1024px) {
   .workspace-main {
     grid-template-columns: minmax(280px, var(--split-left)) 12px minmax(280px, 1fr);
+    grid-template-rows: minmax(0, 1fr);
     gap: 0;
   }
   .workspace-main.focus-mode {
@@ -622,6 +623,7 @@ button {
 .pane {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   min-height: 280px;
   background: var(--surface);
   border: 1px solid var(--border);

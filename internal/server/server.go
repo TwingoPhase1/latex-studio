@@ -203,7 +203,7 @@ func (s *Server) handleGetShare(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleStatic(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Cache-Control", "public, max-age=3600")
+	w.Header().Set("Cache-Control", "no-cache")
 	s.static.ServeHTTP(w, r)
 }
 
