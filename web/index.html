@@ -17,7 +17,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/static/app.css?v=3" />
+    <link rel="stylesheet" href="/static/app.css?v=4" />
     <script>
       window.MathJax = {
         tex: {
@@ -130,6 +130,11 @@
               <button type="button" data-action="export-pdf" class="dropdown-item">
                 <span>Imprimer / PDF</span>
                 <small>Sans compte</small>
+              </button>
+              <div class="dropdown-sep"></div>
+              <button type="button" id="btn-export-standalone" data-action="export-standalone-html" class="dropdown-item">
+                <span>Télécharger l'app (.html)</span>
+                <small>Fichier unique 100% hors ligne</small>
               </button>
             </div>
           </div>
@@ -501,6 +506,6 @@
     <!-- Toasts -->
     <div id="toast-container" class="toast-container no-print"></div>
 
-    <script type="module" src="/static/app.js?v=3"></script>
+    <script type="module" src="/static/app.js?v=4"></script>
   </body>
 </html>

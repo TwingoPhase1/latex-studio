@@ -1,5 +1,5 @@
 // LaTeX Studio (100% Offline-First PWA + MathJax 3)
-import { SYMBOL_CATEGORIES, SYMBOLS, TEMPLATES } from "./catalog.js?v=3";
+import { SYMBOL_CATEGORIES, SYMBOLS, TEMPLATES } from "./catalog.js?v=4";
 
 const THEME_KEY = "latex_studio_theme";
 const PREFS_KEY = "latex_studio_prefs";
@@ -847,14 +847,84 @@ function renderSavedList() {
     .join("");
 }
 
+async function copyTextSafe(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  const ok = document.execCommand("copy");
+  document.body.removeChild(ta);
+  if (!ok) throw new Error("Copie impossible");
+}
+
+async function exportStandaloneHtml() {
+  try {
+    showToast("Préparation du fichier autonome…", "info");
+    const [htmlRes, cssRes, catRes, appRes, mjRes] = await Promise.all([
+      fetch("/"),
+      fetch("/static/app.css?v=4"),
+      fetch("/static/catalog.js?v=4"),
+      fetch("/static/app.js?v=4"),
+      fetch("/static/vendor/tex-svg-full.js"),
+    ]);
+    if (!htmlRes.ok || !cssRes.ok || !catRes.ok || !appRes.ok || !mjRes.ok) {
+      throw new Error("Impossible de récupérer toutes les ressources locales.");
+    }
+    const [htmlText, cssText, catText, appText, mjText] = await Promise.all([
+      htmlRes.text(),
+      cssRes.text(),
+      catRes.text(),
+      appRes.text(),
+      mjRes.text(),
+    ]);
+
+    const escapeClosingScript = (code) => code.replace(/<\/script/gi, "<\\/script");
+    const inlineCatalog = catText.replace(/^export\s+/gm, "");
+    const inlineApp = appText.replace(/^import\s+\{[^}]+\}\s+from\s+["'][^"']+["'];?\s*/m, "");
+    const bundleScript = escapeClosingScript(`(() => {\n${inlineCatalog}\n${inlineApp}\n})();`);
+    const safeMathJax = escapeClosingScript(mjText);
+    const inlineFavicon =
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%236366f1'/%3E%3Cstop offset='100%25' stop-color='%237c3aed'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Ctext x='50%25' y='53%25' dominant-baseline='middle' text-anchor='middle' font-family='Georgia,serif' font-weight='bold' font-size='38' fill='white'%3E%CE%A3%3C/text%3E%3C/svg%3E";
+
+    let outHtml = htmlText
+      .replace(/<link\s+rel="manifest"[^>]*>\s*/i, "")
+      .replace(/<link\s+rel="apple-touch-icon"[^>]*>\s*/i, "")
+      .replace(/href="\/icon\.svg"/i, `href="${inlineFavicon}"`)
+      .replace(/<link\s+rel="stylesheet"\s+href="\/static\/app\.css[^"]*"\s*\/>/i, () => `<style>\n${cssText}\n</style>`)
+      .replace(/<script[^>]*id="MathJax-script"[^>]*><\/script>/i, () => `<script>\n${safeMathJax}\n</script>`)
+      .replace(/<script\s+type="module"\s+src="\/static\/app\.js[^"]*"><\/script>/i, () => `<script>\n${bundleScript}\n</script>`);
+
+    const blob = new Blob([outHtml], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "latex-studio.html";
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("latex-studio.html téléchargé (100% autonome)");
+  } catch (e) {
+    showToast(e.message || "Erreur lors de l'export autonome", "error");
+  }
+}
+
 // ==================== Share Link (100% Client Hash) ====================
 async function shareEquation() {
   const trimmed = state.latex.trim();
   if (!trimmed) return;
   const hash = `#tex=${encodeLatexFromString(trimmed)}`;
-  window.history.replaceState(null, "", hash);
+  if (window.location.protocol === "file:") {
+    window.location.hash = hash;
+  } else {
+    window.history.replaceState(null, "", hash);
+  }
   try {
-    await navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}${hash}`);
+    await copyTextSafe(window.location.href);
     showToast("Lien de partage copié !");
   } catch {
     showToast("URL mise à jour dans la barre d'adresse", "info");
@@ -890,6 +960,7 @@ function wireEvents() {
     if (act === "export-svg") exportSvg();
     if (act === "export-tex") exportTex();
     if (act === "export-pdf") window.print();
+    if (act === "export-standalone-html") exportStandaloneHtml();
   });
 
   // Ribbon tabs & search
@@ -1413,6 +1484,16 @@ function wireEvents() {
 
 function setupPWA() {
   const badge = $("offline-badge");
+  if (window.location.protocol === "file:") {
+    if (badge) {
+      badge.textContent = "Mode autonome";
+      badge.className = "offline-badge cached";
+    }
+    const standaloneBtn = $("btn-export-standalone");
+    if (standaloneBtn) standaloneBtn.classList.add("hidden");
+    return;
+  }
+
   const updateOnlineStatus = (cachedReady = false) => {
     if (!badge) return;
     if (!navigator.onLine) {
