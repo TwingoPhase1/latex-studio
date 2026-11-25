@@ -1,4 +1,5 @@
-// LaTeX Studio (Go backend + MathJax 3 frontend)
+// LaTeX Studio (100% Offline-First PWA + MathJax 3)
+import { SYMBOL_CATEGORIES, SYMBOLS, TEMPLATES } from "./catalog.js?v=3";
 
 const THEME_KEY = "latex_studio_theme";
 const PREFS_KEY = "latex_studio_prefs";
@@ -755,23 +756,30 @@ function renderTemplatesModal() {
     .join("");
 }
 
-// ==================== Saved Snippets (Go API + localStorage fallback) ====================
-async function fetchSnippets() {
+// ==================== Saved Snippets (100% Offline localStorage) ====================
+function loadSavedFromStorage() {
   try {
-    const res = await fetch("/api/snippets");
-    if (res.ok) {
-      const data = await res.json();
-      state.saved = data.snippets || [];
-      localStorage.setItem(SAVED_FALLBACK_KEY, JSON.stringify(state.saved));
-    }
+    const raw = JSON.parse(localStorage.getItem(SAVED_FALLBACK_KEY) || "[]");
+    return Array.isArray(raw) ? raw : [];
   } catch {
-    try {
-      state.saved = JSON.parse(localStorage.getItem(SAVED_FALLBACK_KEY) || "[]");
-    } catch {
-      state.saved = [];
-    }
+    return [];
   }
+}
+
+function persistSaved() {
+  state.saved.sort((a, b) => {
+    if (Boolean(a.pinned) !== Boolean(b.pinned)) return a.pinned ? -1 : 1;
+    return (b.updatedAt || 0) - (a.updatedAt || 0);
+  });
+  try {
+    localStorage.setItem(SAVED_FALLBACK_KEY, JSON.stringify(state.saved));
+  } catch {}
   updateSavedBadge();
+}
+
+function fetchSnippets() {
+  state.saved = loadSavedFromStorage();
+  persistSaved();
 }
 
 function updateSavedBadge() {
@@ -781,25 +789,24 @@ function updateSavedBadge() {
   $("saved-drawer-title").textContent = `Équations enregistrées (${state.saved.length})`;
 }
 
-async function saveCurrentEquation() {
+function saveCurrentEquation() {
   const trimmed = state.latex.trim();
   if (!trimmed) return;
-  try {
-    const res = await fetch("/api/snippets", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ latex: trimmed }),
-    });
-    if (res.ok) {
-      const created = await res.json();
-      state.saved.unshift(created);
-      updateSavedBadge();
-      if (!$("saved-drawer-backdrop").classList.contains("hidden")) renderSavedList();
-      showToast("Équation enregistrée sur le serveur");
-      return;
-    }
-  } catch {}
-  showToast("Impossible de sauvegarder sur le serveur", "error");
+  const now = Date.now();
+  const firstLine = trimmed.split("\n")[0].replace(/\\+/g, " ").trim();
+  const title = firstLine.length > 40 ? `${firstLine.slice(0, 40)}…` : firstLine || "Équation sans titre";
+  const created = {
+    id: `${now}-${Math.random().toString(36).slice(2, 7)}`,
+    title,
+    latex: trimmed,
+    createdAt: now,
+    updatedAt: now,
+    pinned: false,
+  };
+  state.saved.unshift(created);
+  persistSaved();
+  if (!$("saved-drawer-backdrop").classList.contains("hidden")) renderSavedList();
+  showToast("Équation enregistrée hors ligne");
 }
 
 function renderSavedList() {
@@ -840,29 +847,18 @@ function renderSavedList() {
     .join("");
 }
 
-// ==================== Share Link ====================
+// ==================== Share Link (100% Client Hash) ====================
 async function shareEquation() {
   const trimmed = state.latex.trim();
   if (!trimmed) return;
-  try {
-    const res = await fetch("/api/share", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ latex: trimmed }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      const shareUrl = `${window.location.origin}${data.url}`;
-      window.history.replaceState(null, "", data.url);
-      await navigator.clipboard.writeText(shareUrl);
-      showToast("Lien court de partage copié !");
-      return;
-    }
-  } catch {}
   const hash = `#tex=${encodeLatexFromString(trimmed)}`;
   window.history.replaceState(null, "", hash);
-  await navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}${hash}`);
-  showToast("Lien de partage copié !");
+  try {
+    await navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}${hash}`);
+    showToast("Lien de partage copié !");
+  } catch {
+    showToast("URL mise à jour dans la barre d'adresse", "info");
+  }
 }
 
 // ==================== Event Wiring & Init ====================
@@ -1294,25 +1290,16 @@ function wireEvents() {
       await navigator.clipboard.writeText(item.latex);
       showToast("Code LaTeX copié");
     } else if (act === "pin") {
-      const res = await fetch(`/api/snippets/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pinned: !item.pinned }),
-      });
-      if (res.ok) {
-        await fetchSnippets();
-        renderSavedList();
-      }
+      item.pinned = !item.pinned;
+      item.updatedAt = Date.now();
+      persistSaved();
+      renderSavedList();
     } else if (act === "delete") {
-      const res = await fetch(`/api/snippets/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        state.saved = state.saved.filter((s) => s.id !== id);
-        updateSavedBadge();
-        renderSavedList();
-        showToast("Équation supprimée", "info");
-      }
+      state.saved = state.saved.filter((s) => s.id !== id);
+      persistSaved();
+      renderSavedList();
+      showToast("Équation supprimée", "info");
     } else if (act === "rename") {
-      const head = card.querySelector(".saved-card-head");
       const input = document.createElement("input");
       input.type = "text";
       input.className = "saved-rename-input";
@@ -1323,17 +1310,14 @@ function wireEvents() {
       input.select();
 
       let done = false;
-      const finish = async (commit) => {
+      const finish = (commit) => {
         if (done) return;
         done = true;
         const val = input.value.trim();
         if (commit && val && val !== item.title) {
-          const res = await fetch(`/api/snippets/${id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ title: val }),
-          });
-          if (res.ok) await fetchSnippets();
+          item.title = val;
+          item.updatedAt = Date.now();
+          persistSaved();
         }
         renderSavedList();
       };
@@ -1364,22 +1348,31 @@ function wireEvents() {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = async () => {
+    reader.onload = () => {
       try {
         const parsed = JSON.parse(String(reader.result));
         if (Array.isArray(parsed)) {
-          const res = await fetch("/api/snippets/import", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(parsed),
-          });
-          if (res.ok) {
-            const data = await res.json();
-            state.saved = data.snippets || [];
-            updateSavedBadge();
-            renderSavedList();
-            showToast(`${data.added} équation(s) importée(s)`);
+          const existing = new Set(state.saved.map((x) => x.id));
+          let added = 0;
+          const now = Date.now();
+          for (const entry of parsed) {
+            if (!entry || typeof entry.latex !== "string" || !entry.latex.trim()) continue;
+            const id = entry.id || `${now}-${Math.random().toString(36).slice(2, 7)}`;
+            if (existing.has(id)) continue;
+            existing.add(id);
+            state.saved.push({
+              id,
+              title: typeof entry.title === "string" && entry.title.trim() ? entry.title.trim() : "Équation importée",
+              latex: entry.latex.trim(),
+              createdAt: entry.createdAt || now,
+              updatedAt: entry.updatedAt || now,
+              pinned: Boolean(entry.pinned),
+            });
+            added++;
           }
+          persistSaved();
+          renderSavedList();
+          showToast(`${added} équation(s) importée(s)`);
         }
       } catch {
         showToast("Fichier JSON invalide", "error");
@@ -1418,6 +1411,71 @@ function wireEvents() {
   });
 }
 
+function setupPWA() {
+  const badge = $("offline-badge");
+  const updateOnlineStatus = (cachedReady = false) => {
+    if (!badge) return;
+    if (!navigator.onLine) {
+      badge.textContent = "Hors ligne (cache)";
+      badge.className = "offline-badge offline";
+    } else if (cachedReady || navigator.serviceWorker?.controller) {
+      badge.textContent = "Prêt hors ligne";
+      badge.className = "offline-badge cached";
+    } else {
+      badge.textContent = "En ligne";
+      badge.className = "offline-badge";
+    }
+  };
+
+  window.addEventListener("online", () => updateOnlineStatus());
+  window.addEventListener("offline", () => updateOnlineStatus());
+  updateOnlineStatus();
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker
+      .register("/sw.js", { scope: "/" })
+      .then((reg) => {
+        if (reg.active) updateOnlineStatus(true);
+        reg.addEventListener("updatefound", () => {
+          const worker = reg.installing;
+          if (!worker) return;
+          worker.addEventListener("statechange", () => {
+            if (worker.state === "activated") {
+              updateOnlineStatus(true);
+            }
+          });
+        });
+      })
+      .catch(() => {});
+  }
+
+  let deferredPrompt = null;
+  const installBtn = $("btn-install-pwa");
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (installBtn) installBtn.classList.remove("hidden");
+  });
+
+  if (installBtn) {
+    installBtn.addEventListener("click", async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      if (choice.outcome === "accepted") {
+        installBtn.classList.add("hidden");
+        showToast("LaTeX Studio installé !");
+      }
+    });
+  }
+
+  window.addEventListener("appinstalled", () => {
+    deferredPrompt = null;
+    if (installBtn) installBtn.classList.add("hidden");
+  });
+}
+
 async function init() {
   applyTheme(state.theme);
   $("workspace-main").style.setProperty("--split-left", `${state.splitPct}%`);
@@ -1429,31 +1487,14 @@ async function init() {
   document.querySelectorAll("[data-bg]").forEach((b) => b.classList.toggle("active", b.dataset.bg === state.prefs.previewBg));
 
   wireEvents();
+  setupPWA();
 
-  // Hydrate /s/{id} short share links if opened directly
-  const shareMatch = window.location.pathname.match(/^\/s\/([A-Za-z0-9_-]+)$/);
-  if (shareMatch) {
-    try {
-      const res = await fetch(`/api/share/${shareMatch[1]}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.latex) state.latex = data.latex;
-      }
-    } catch {}
-  }
+  state.categories = SYMBOL_CATEGORIES;
+  state.symbols = SYMBOLS;
+  state.templates = TEMPLATES;
+  fetchSnippets();
 
   setLatexValue(state.latex, { recordHistory: true });
-
-  // Load symbols, templates, and saved snippets from Go API
-  const [symRes, tplRes] = await Promise.all([
-    fetch("/api/symbols").then((r) => r.json()).catch(() => ({ categories: [], symbols: [] })),
-    fetch("/api/templates").then((r) => r.json()).catch(() => ({ templates: [] })),
-    fetchSnippets(),
-  ]);
-
-  state.categories = symRes.categories || [];
-  state.symbols = symRes.symbols || [];
-  state.templates = tplRes.templates || [];
   renderSymbolTabs();
   renderSymbolGrid();
 

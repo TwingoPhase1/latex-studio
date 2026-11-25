@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"latex-studio/internal/server"
-	"latex-studio/internal/store"
 )
 
 //go:embed web
@@ -25,26 +24,14 @@ func main() {
 		port = "8080"
 	}
 
-	dataDir := os.Getenv("DATA_DIR")
-	if dataDir == "" {
-		dataDir = "./data"
-	}
-
-	st, err := store.New(dataDir)
-	if err != nil {
-		log.Fatalf("failed to initialize data store: %v", err)
-	}
-
 	subFS, err := fs.Sub(webFS, "web")
 	if err != nil {
 		log.Fatalf("failed to open embedded web filesystem: %v", err)
 	}
 
-	handler := server.New(st, subFS)
-
 	srv := &http.Server{
 		Addr:              ":" + port,
-		Handler:           handler,
+		Handler:           server.New(subFS),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,
@@ -52,7 +39,7 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("LaTeX Studio (Go) listening on http://0.0.0.0:%s (data: %s)", port, dataDir)
+		log.Printf("LaTeX Studio (Stateless PWA Host) listening on http://0.0.0.0:%s", port)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("server error: %v", err)
 		}

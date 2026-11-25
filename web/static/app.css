@@ -246,6 +246,46 @@ button {
   background: var(--accent-hover);
 }
 
+.btn-install {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--accent-border);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+.btn-install:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.offline-badge {
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+}
+.offline-badge.cached {
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+html.dark .offline-badge.cached {
+  color: #34d399;
+}
+.offline-badge.offline {
+  border-color: var(--amber-border);
+  background: var(--amber-bg);
+  color: var(--amber-text);
+}
+
 .btn-chip {
   display: inline-flex;
   align-items: center;
