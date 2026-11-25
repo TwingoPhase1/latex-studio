@@ -1,5 +1,5 @@
 // LaTeX Studio (100% Offline-First PWA + MathJax 3)
-import { SYMBOL_CATEGORIES, SYMBOLS, TEMPLATES } from "./catalog.js?v=5";
+import { SYMBOL_CATEGORIES, SYMBOLS, TEMPLATES } from "./catalog.js?v=6";
 
 const PUBLIC_SITE_URL = "https://latex.twingophaseone.uk";
 
@@ -258,17 +258,24 @@ function updatePreview() {
     displayLines: state.prefs.displayLines,
     displayMode: state.prefs.displayMode,
   });
+
+  if (res.error) {
+    if (outEl.innerHTML.trim()) {
+      outEl.classList.add("stale");
+    } else {
+      outEl.classList.remove("stale");
+    }
+    errEl.textContent = `Syntaxe LaTeX : ${res.error}`;
+    errEl.classList.remove("hidden");
+    return;
+  }
+
+  outEl.classList.remove("stale");
   state.lastSvgElement = res.svgElement;
   outEl.style.fontSize = `${state.prefs.fontSize}px`;
   outEl.innerHTML = res.svgHtml;
   printEl.innerHTML = `<div class="mathjax-output" style="font-size:${state.prefs.fontSize}px">${res.svgHtml}</div>`;
-
-  if (res.error) {
-    errEl.textContent = `Syntaxe LaTeX : ${res.error}`;
-    errEl.classList.remove("hidden");
-  } else {
-    errEl.classList.add("hidden");
-  }
+  errEl.classList.add("hidden");
 }
 
 // ==================== Export Helpers ====================
@@ -717,7 +724,12 @@ function buildMatrixLatex() {
 
 function updateMatrixPreview() {
   const latex = buildMatrixLatex();
-  $("matrix-preview").innerHTML = renderLatexToSvg(latex, { displayLines: false, displayMode: true }).svgHtml;
+  const res = renderLatexToSvg(latex, { displayLines: false, displayMode: true });
+  if (res.error) {
+    $("matrix-preview").innerHTML = `<span class="muted" style="font-size:12px">Syntaxe de cellule invalide : ${escapeHtml(res.error)}</span>`;
+    return;
+  }
+  $("matrix-preview").innerHTML = res.svgHtml;
 }
 
 function openTemplatesModal() {
@@ -870,9 +882,9 @@ async function exportStandaloneHtml() {
     showToast("Préparation du fichier autonome…", "info");
     const [htmlRes, cssRes, catRes, appRes, mjRes] = await Promise.all([
       fetch("/"),
-      fetch("/static/app.css?v=5"),
-      fetch("/static/catalog.js?v=5"),
-      fetch("/static/app.js?v=5"),
+      fetch("/static/app.css?v=6"),
+      fetch("/static/catalog.js?v=6"),
+      fetch("/static/app.js?v=6"),
       fetch("/static/vendor/tex-svg-full.js"),
     ]);
     if (!htmlRes.ok || !cssRes.ok || !catRes.ok || !appRes.ok || !mjRes.ok) {

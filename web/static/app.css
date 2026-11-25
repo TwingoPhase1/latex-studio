@@ -962,6 +962,13 @@ html.dark .preview-canvas.bg-transparent {
   height: auto;
   overflow: visible;
 }
+.mathjax-output.stale {
+  opacity: 0.45;
+  transition: opacity 0.15s ease;
+}
+g[data-mml-node="merror"] rect {
+  fill: transparent !important;
+}
 
 .preview-empty {
   text-align: center;
