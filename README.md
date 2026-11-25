@@ -7,15 +7,16 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-10B981.svg)](./LICENSE)
 
 Un éditeur d'équations **LaTeX** moderne, installable (**PWA**) et **100 % hors ligne**.
-Le serveur **Go** (stateless, zéro base de données, bibliothèque standard uniquement) distribue simplement la page et ses assets embarqués (`//go:embed web`) — y compris **MathJax 3** complet en local — puis le **Service Worker** met toute l'application en cache chez l'utilisateur. Une fois chargée ou installée sur ordinateur/mobile, elle fonctionne entièrement **sans connexion internet** et sans jamais solliciter le serveur.
+Le serveur **Go** (stateless, zéro base de données, bibliothèque standard uniquement) distribue simplement la page et ses assets embarqués (`//go:embed web`) — y compris **MathJax 3** complet en local — puis le **Service Worker** met toute l'application en cache chez l'utilisateur. Une fois chargée, installée en PWA ou téléchargée en fichier unique `.html`, l'application fonctionne entièrement **sans connexion internet** et sans solliciter le serveur.
 
 ---
 
 ## Fonctionnalités
 
-- **100 % Hors ligne & Installable (PWA)** :
+- **100 % Hors ligne, PWA & Export fichier unique (`.html`)** :
   - Service Worker (`/sw.js`) avec stratégie *Cache-First* et mise en cache complète de l'interface, des symboles, des modèles et de `tex-svg-full.js`.
-  - Bouton **Installer l'app** dans l'en-tête (compatible Chrome, Edge, Android, iOS « Sur l'écran d'accueil »).
+  - Bouton **Installer l'app** dans l'en-tête (Chrome, Edge, Android, iOS « Sur l'écran d'accueil »).
+  - Bouton **Télécharger l'app (.html)** dans le menu *Exporter* pour générer un fichier `latex-studio.html` (~2,3 Mo) totalement autonome ouvrable par double-clic (`file://`).
   - Sauvegarde locale illimitée dans le navigateur (`localStorage`) + import/export JSON + partage par lien autonome (`#tex=...`).
 - **Palette de symboles complète & accessible (220+ éléments)** :
   - 9 onglets organisés : *Essentiels*, *Grec*, *Opérateurs & Relations*, *Flèches*, *Ensembles & Délimiteurs*, *Fonctions*, *Accents, Polices & Tailles*, *Couleurs & Cadres*, *Physique & Chimie*.
@@ -53,12 +54,12 @@ latex-studio/
 │   ├── icon.svg / icon-192.png / 512    # Icônes de l'application
 │   └── static/
 │       ├── app.css                      # Design studio Clair/Sombre & print CSS
-│       ├── app.js                       # Logique éditeur, exports, PWA & localStorage
+│       ├── app.js                       # Logique éditeur, exports, PWA & export .html autonome
 │       ├── catalog.js                   # 220+ symboles et 13 modèles côté client
 │       └── vendor/tex-svg-full.js       # MathJax 3 complet embarqué localement
 ├── Dockerfile                           # Build multi-stage (go test + binaire statique Alpine)
-├── docker-compose.yml                   # Stack isolée latex-studio + cloudflared
-└── .env.example                         # Variables d'environnement de référence
+├── docker-compose.yml                   # Conteneur standalone latex-studio
+└── .env.example                         # Port hôte optionnel
 ```
 
 ---
@@ -66,49 +67,39 @@ latex-studio/
 ## Déploiement sur votre serveur (VPS Linux / Homelab)
 
 ### 1. Prérequis
-- **Git**, **Docker Engine** et le plugin **Docker Compose**
+- **Git**, **Docker Engine** et le plugin **Docker Compose** (`docker compose version`)
 
-### 2. Cloner et configurer `.env`
+### 2. Cloner et démarrer
 
 ```bash
 git clone https://github.com/TwingoPhase1/latex-studio.git
 cd latex-studio
-cp .env.example .env
+cp .env.example .env   # optionnel : changez PORT (8080 par défaut)
+docker compose up -d --build
 ```
 
-Éditez `.env` :
-
-```env
-PORT=8088
-CLOUDFLARE_TUNNEL_TOKEN=votre_token_cloudflare_tunnel
-```
-
-> Créez un tunnel dédié à `latex-studio` dans Cloudflare Zero Trust (ne réutilisez pas le token d'un autre conteneur `cloudflared` déjà actif sur un autre réseau Docker, sinon vous aurez des `502 Bad Gateway` intermittents).
-
-### 3. Lancer la stack
+Vérifiez que le conteneur est sain :
 
 ```bash
-docker compose up -d --build
 docker compose ps
-curl -s http://localhost:8088/api/health
+curl -s http://localhost:8080/api/health
 # {"engine":"go","mode":"offline-pwa","status":"ok"}
 ```
 
-*(Sans Tunnel Cloudflare, avec Nginx/Caddy/Traefik existant : `docker compose up -d --build latex-studio`.)*
+### 3. Exposer via votre Reverse Proxy ou Tunnel séparé
 
-### 4. Configurer Cloudflare Zero Trust
+Le conteneur expose le port configuré dans `.env` (`${PORT:-8080}:8080`). Pointez votre reverse proxy externe (Nginx, Caddy, Traefik ou un tunnel Cloudflare géré à part) vers :
+- `http://localhost:8080` (ou `http://host.docker.internal:<PORT>` depuis un autre conteneur).
 
-Dans **Networks → Tunnels → Public Hostname** :
-- **Type** : `HTTP`
-- **URL** : `latex-studio:8080` *(port interne du conteneur dans `latex-studio-net`)*
+> **Note PWA** : le Service Worker et le bouton *Installer l'app* nécessitent `HTTPS` en production (ou `http://localhost` en local).
 
-### 5. Mise à jour
+### 4. Mise à jour
 
 ```bash
 git pull && docker compose up -d --build
 ```
 
-*(Comme le serveur est totalement stateless, aucune base de données n'est à sauvegarder côté serveur : tout est conservé dans le navigateur de chaque utilisateur avec export/import JSON intégré.)*
+*(Le serveur étant totalement stateless, aucune base de données n'est à sauvegarder côté serveur : tout est conservé dans le navigateur de chaque utilisateur avec export/import JSON intégré.)*
 
 ---
 
