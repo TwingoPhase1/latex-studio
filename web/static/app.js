@@ -1,5 +1,7 @@
 // LaTeX Studio (100% Offline-First PWA + MathJax 3)
-import { SYMBOL_CATEGORIES, SYMBOLS, TEMPLATES } from "./catalog.js?v=4";
+import { SYMBOL_CATEGORIES, SYMBOLS, TEMPLATES } from "./catalog.js?v=5";
+
+const PUBLIC_SITE_URL = "https://latex.twingophaseone.uk";
 
 const THEME_KEY = "latex_studio_theme";
 const PREFS_KEY = "latex_studio_prefs";
@@ -868,9 +870,9 @@ async function exportStandaloneHtml() {
     showToast("Préparation du fichier autonome…", "info");
     const [htmlRes, cssRes, catRes, appRes, mjRes] = await Promise.all([
       fetch("/"),
-      fetch("/static/app.css?v=4"),
-      fetch("/static/catalog.js?v=4"),
-      fetch("/static/app.js?v=4"),
+      fetch("/static/app.css?v=5"),
+      fetch("/static/catalog.js?v=5"),
+      fetch("/static/app.js?v=5"),
       fetch("/static/vendor/tex-svg-full.js"),
     ]);
     if (!htmlRes.ok || !cssRes.ok || !catRes.ok || !appRes.ok || !mjRes.ok) {
@@ -886,7 +888,16 @@ async function exportStandaloneHtml() {
 
     const escapeClosingScript = (code) => code.replace(/<\/script/gi, "<\\/script");
     const inlineCatalog = catText.replace(/^export\s+/gm, "");
-    const inlineApp = appText.replace(/^import\s+\{[^}]+\}\s+from\s+["'][^"']+["'];?\s*/m, "");
+    const originHost = window.location.hostname;
+    const targetPublicUrl =
+      window.location.protocol.startsWith("http") &&
+      originHost !== "localhost" &&
+      originHost !== "127.0.0.1"
+        ? window.location.origin
+        : PUBLIC_SITE_URL;
+    const inlineApp = appText
+      .replace(/^import\s+\{[^}]+\}\s+from\s+["'][^"']+["'];?\s*/m, "")
+      .replace(/const PUBLIC_SITE_URL = "[^"]+";/, `const PUBLIC_SITE_URL = "${targetPublicUrl}";`);
     const bundleScript = escapeClosingScript(`(() => {\n${inlineCatalog}\n${inlineApp}\n})();`);
     const safeMathJax = escapeClosingScript(mjText);
     const inlineFavicon =
@@ -918,13 +929,16 @@ async function shareEquation() {
   const trimmed = state.latex.trim();
   if (!trimmed) return;
   const hash = `#tex=${encodeLatexFromString(trimmed)}`;
+  let shareUrl;
   if (window.location.protocol === "file:") {
     window.location.hash = hash;
+    shareUrl = `${PUBLIC_SITE_URL.replace(/\/+$/, "")}/${hash}`;
   } else {
     window.history.replaceState(null, "", hash);
+    shareUrl = `${window.location.origin}${window.location.pathname}${hash}`;
   }
   try {
-    await copyTextSafe(window.location.href);
+    await copyTextSafe(shareUrl);
     showToast("Lien de partage copié !");
   } catch {
     showToast("URL mise à jour dans la barre d'adresse", "info");

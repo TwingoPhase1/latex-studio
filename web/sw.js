@@ -1,4 +1,4 @@
-const CACHE_NAME = "latex-studio-v4";
+const CACHE_NAME = "latex-studio-v5";
 
 const PRECACHE_URLS = [
   "/",
@@ -6,9 +6,9 @@ const PRECACHE_URLS = [
   "/icon.svg",
   "/icon-192.png",
   "/icon-512.png",
-  "/static/app.css?v=4",
-  "/static/app.js?v=4",
-  "/static/catalog.js?v=4",
+  "/static/app.css?v=5",
+  "/static/app.js?v=5",
+  "/static/catalog.js?v=5",
   "/static/vendor/tex-svg-full.js",
 ];
 
